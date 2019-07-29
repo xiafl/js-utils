@@ -201,5 +201,94 @@ let numToChinese = (function(){
 
 
 
+/***********************************  转换任意层的括号的分组  ************************************ */
+/**
+ * 转换任意层括号的分组，返回一个数组。
+ * 有点类似于将其中的括号转换为方括号，然后转换为一个数组。
+ * @public
+ * @param {string} str - 要转换的字符串
+ * @param {number} [deep=0] - 要识别的分组的深度，0表示任意深
+ * @param {string} [left="("] - 左括号
+ * @param {string} [right=")"] - 右括号
+ * @example
+ * 1. groupSplit('k + (a + b) + ( (c + d) + e ) + f');
+ * // => ['k +', ['a + b'], '+', [ ['c + d'], '+ e' ], '+ f']
+ */
+function groupSplit(str, deep = 0, left = '(', right = ')'){
+    let result = oneLayerSplit(str, left, right);
+    let arr = [];
+    if(Array.isArray(result)){
+        arr.push(result);
+    }
+    let cycleNum = 1;
+    while(arr.length > 0){
+        if(deep > 0 && deep >= cycleNum){
+            break;
+        }
+        cycleNum ++;
+        let tempArr = [];
+        arr.forEach(val=>{
+            for(let i=0; i<val.length; i++){
+                if( Array.isArray(val[i]) ){
+                    let res = oneLayerSplit(val[i][0], left, right);
+                    if( Array.isArray(res) ){
+                        val[i] = res;
+                        tempArr.push( res );
+                    }else{
+                        val[i][0] = res;
+                    }
+                }
+            }
+        });
+        arr = tempArr;
+    }
+    return result;
+}
 
+/**
+ * 转换一层括号, 如果有括号就返回一个数组，否则返回字符串。
+ * 功能类似于将最外层的括号转换为数组的方括号了。
+ * @public
+ * @param {string} str - 要转换的字符串
+ * @param {string} [left="("] - 左括号
+ * @param {string} [right=")"] - 右括号
+ * @example
+ * 1. oneLayerSplit('k + (a + b) + ( (c + d) + e ) + f');
+ * // => ['k +', ['a + b'], ['(c + d) + e'], '+ f']
+ */
+function oneLayerSplit(str, left = '(', right = ')'){
+   let index = str.indexOf(left);
+   if(index === -1){
+        return str;
+   }
+   let result = [], subStr = '', signNum = 0;
+   for(let i=0, val; i<str.length; i++){
+        val = str[i];
+        if(val === left){
+            if(signNum === 0){
+                subStr = subStr.trim();
+                subStr && result.push(subStr);
+                subStr = '';
+            }else{
+                subStr += val;
+            }
+            signNum ++;
+        }else if(val === right){
+            signNum --;
+            if(signNum === 0){
+                subStr = subStr.trim();
+                subStr && result.push([subStr]);
+                subStr = '';
+            }else{
+                subStr += val;
+            }
+        }else{
+            subStr += val;
+        }
+   }
+   subStr = subStr.trim();
+   subStr && result.push(subStr);
+   return result;
+}
+/***********************************  转换任意层的括号的分组  ************************************ */
 

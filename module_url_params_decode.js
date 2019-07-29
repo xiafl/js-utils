@@ -6,16 +6,21 @@
 //******************************* 解码url中的参数 ******************************* */
 /**
  * v1.0.0
- * 最后修改: 2019.7.19
+ * 最后修改: 2019.7.29
  * 创建: 2019.7.17
  */
 /**
  * 根据对象的属性名，将对象进行展开
  * @public
- * @param {Object} obj - 要转换的对象 如: {qq: "88", dd[a]: "3", dd[cc][u]: "888", dd[b]: "4"}
+ * @param {Object|string} obj - 要转换的对象 如: {qq: "88", dd[a]: "3", dd[cc][u]: "888", dd[b]: "4"}
  * @returns {Object} 转换的结果
  * @example
- * 1. decodeUrlParam( {qq: "88", 'dd[a]': "3", 'dd[cc][u]': "888", 'dd[b]': "4"} );
+ * 1. 传入一个对象
+ * decodeUrlParam( {qq: "88", 'dd[a]': "3", 'dd[cc][u]': "888", 'dd[b]': "4"} );
+ * // => {qq: "88", dd: {a: "3", cc: {u: "888"}, b: "4"}}
+ * 
+ * 2. 传入一个字符串
+ * decodeUrlParam(  'qq=88&dd[a]=3&dd[cc][u]=888&dd[b]=4' );
  * // => {qq: "88", dd: {a: "3", cc: {u: "888"}, b: "4"}}
  */
 function decodeUrlParam(obj, left = '[', right = ']'){

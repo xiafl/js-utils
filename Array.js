@@ -11,17 +11,17 @@
  * @returns  Array  - 一个新的随机数组
  * @example
  * 
- * 1. randomArr(4);   //生成 [0,1)的随机数组
+ * 1. generateRandomArr(4);   //生成 [0,1)的随机数组
  * // => [0.907440631863677, 0.9179344191798724, 0.6084427360446603, 0.4955541137302315]
  * 
- * 2. randomArr(4, 3); //生成 [3, 1) 的随机数组
+ * 2. generateRandomArr(4, 3); //生成 [3, 1) 的随机数组
  * // => [2.8843671806078723, 1.576131569769967, 2.0709581783787474, 1.407648076583225]
  * 
- * 3. randomArr(4, 3, 10); //生成 [3, 10) 的随机数组
+ * 3. generateRandomArr(4, 3, 10); //生成 [3, 10) 的随机数组
  * // => [8.203333050028927, 5.46812783865793, 4.296903604936294, 6.737924681142783]
  * 
  */
-function randomArr(length = 0, min = 0, max = 1) {  //生成一个随机数组
+function generateRandomArr(length = 0, min = 0, max = 1) {  //生成一个随机数组
     if (max < min) {
         [max, min] = [min, max];
     }
@@ -30,6 +30,31 @@ function randomArr(length = 0, min = 0, max = 1) {  //生成一个随机数组
         arr[i] = Math.random() * space + min;
     }
     return arr;
+}
+
+/**
+ * 将指定数组中的元素顺序打乱，注意，这个函数会改变原数组。
+ * @public
+ * @param {Array} arr - 要操作的数组。
+ * @param {boolean} [isNew=true] - 是否新创建一个数组，而不改变原数组。
+ * @returns {Array} 返回原数组或新的数组，并且已经打乱其顺序。
+ * @example
+ * 1. let arr = [3,8,7,9]; randomArr(arr); 
+ * // => arr不变 反回一个新的数组 [9,3,7,8]
+ * 
+ * 2. let arr = [3,'c',7,{aa:7}]; randomArr(arr); 
+ * // => arr不变 返回一个新的['c',3,{aa:7},7]
+ * 
+ * 3. let arr = [3,'c',7,{aa:7}]; randomArr(arr, false); 
+ * // => arr 被改变成 ['c',3,{aa:7},7]
+ */
+function randomArr(arr, isNew = true){
+    let result = isNew ? [...arr] : arr;
+    for(let i=0, len = result.length,  pos, temp; i<len; i++){
+        pos = Math.floor( len*Math.random() );     // 随机产生 [0, length-1] 的整数
+        temp = result[i];  result[i] = result[pos]; result[pos] = temp; // 交换 i 与 pos 的位置
+    }
+    return result;
 }
 
 /**
@@ -141,29 +166,38 @@ function isArray(obj) {
     return Array.isArray ? Array.isArray(obj) : Object.prototype.toString.call(obj) === '[object Array]';
 }
 
+
 /**
- * 遍历数组或对象
+ * 遍历数组或类数组或普通对象
+ * 跟原生的forEach的差别是: 可以遍历普通对象，也可以中途可以退出。
+ * 注意，类数组只会遍历其中的数字属性。
  * @public
  * @param {object|Array} obj - 要遍历的对象
  * @param {function} func - 回调  func.call(thisObj, value, prop, obj);
  * @param {any} [thisObj=null] - 回调中的this
  * @example
- * 1. forEach({a: 3, b: 4}, ()=>{
+ * 1. forEach({a: 3, b: 4}, (val, prop, obj)=>{ // 遍历普通对象
+ *     return false; //返回false 表示退出循环
+ * });
+ * 
+ * 2. forEach([3, 4], (val, index, obj)=>{ // 遍历数组
+ *     return false; //返回false 表示退出循环
+ * });
+ * 
+ * 3. forEach({1: 3, 5: 10, a: 'aa', length: 20}, (val, index, obj)=>{ // 遍历类数组
+ *     return false; //返回false 表示退出循环
  * });
  */
 function forEach(obj, func, thisObj = null) {
-    if (obj == null || typeof func !== 'function') {
+    if (obj == null || typeof obj === 'function' || typeof func !== 'function') {
         return obj;
     }
 
     //对象自身的（不含继承的）所有可遍历（enumerable）属性
     let keys = Object.keys(obj);
 
-    let isArrayLike = false;
-    if (typeof obj !== 'function') {
-        const length = obj.length;
-        isArrayLike = typeof length == 'number' && length > -1 && length % 1 == 0 && length <= 9007199254740991;
-    }
+    const length = obj.length;
+    const isArrayLike = typeof length == 'number' && length > -1 && length % 1 == 0 && length <= 9007199254740991;
 
     //如果是类数组或数组，只遍历其中的数字属性
     if (isArrayLike) {
@@ -186,11 +220,126 @@ function forEach(obj, func, thisObj = null) {
     return obj;
 }
 
+/**
+ * 从一个数组中进行搜索，返回一个索引, 主要特点是可以深层搜索
+ * 依赖: forEach  props 这两个函数
+ * @public
+ * @param {Array} arr - 要搜索的数组或类数组或普通对象
+ * @param {any} searchVal - 要搜索的值 
+ * @param {string|Array} [propPath=''] - 要搜索的值的路径， 如 'aa.bb.cc' 或 ['aa', 'bb', 'cc']
+ * @param {function} [compareFunc=null] - 比较函数 compareFunc(val, searchVal, index, arrVal)
+ *                                        省略时，表示进行全等比较。
+ * @example
+ * 1. 简单的使用
+ * searchIndex([1, 2, 3], 2); // => 1
+ * 
+ * 2. 使用自定义的比较函数
+ * searchIndex([1, 2, 3], '2', '', (val, searchVal)=>val==searchVal); // => 1
+ * 
+ * 3. 指定用值的路径
+ * searchIndex([1, {aa: 3}, {aa: {bb: 3}}, {aa: {bb: 4}], 3, 'aa.bb'); // => 1
+ */
+function searchIndex(arr, searchVal, propPath = '', compareFunc = null){
+    let result_index= -1;
+    if(propPath){
+        if(typeof propPath === 'string'){	
+            propPath = propPath.split(/\s*[\,\.]\s*/);
+        }else if( !Array.isArray(propPath) ){
+            propPath = '';
+        }
+    }
+    forEach(arr, (val, index, arrVal)=>{
+        if(propPath){
+            val = props(val, propPath);
+        }
+        if(
+            typeof compareFunc === 'function' 
+            ? compareFunc(val, searchVal, index, arrVal)
+            : val === searchVal
+        ){
+            result_index = index;
+            return false;
+        }
+    });
+    return result_index;
+}
 
 
 
 
 
+/**
+ * 递归法遍历对象的所有属性, 不改变原对象。  
+ * 如果其中存在循环引用，则这个循环引用将不会再次被遍历到  
+ * @public
+ * @param {any} obj - 要遍历的对象
+ * @param {function} leafCallback - 遍历到叶子节点时的回调 leafCallback(propArr, obj, parentObjsArr) 返回 'break' 可以跳出遍历
+ * @param {Object} [{
+ *                  leafThisObj = null, deep = 0, propArr = [], parentObjsArr = [], 
+ *                  nodeCallback = null, nodeThisObj = null, cicleBreak = false
+ *                  }] - 遍历的其它可选参数
+ *         deep - 遍历的深度， 小于等于0表示不限制深度     
+ *         propArr - 用于存储访问属性的路径     
+ *         parentObjsArr - 用于存储遍历过的对象     
+ *         nodeCallback - 遍历到每一个节点的回调，返回 'break' 可以跳出遍历， 返回 true 表示进行下一个分支的遍历   
+ *         cicleBreak - 当遇到循环引用时，是否直接退出整个遍历   
+ * @example
+ * 1.  // 正常情况下
+ * let testData = {aa: 3, bb: {ee: 4, ff: 5, gg: {kk: 6}}, cc: [{aa: 3}, {ee: {bb: 4}}]}; 
+ * treeObject(testData, {leafCallback: function(propArr, val, parentObjsArr){console.log(propArr, val, parentObjsArr)}});
+ */
+function treeArr(arr, {
+        leafCallback = null, leafThisObj = null, 
+        nodeCallback = null, nodeThisObj = null, 
+        deep = 0, propArr = [], parentObjsArr = [], cicleBreak = false, isLinkArr = true,
+    } = {}
+    ){
+    if( !Array.isArray(arr) ){
+        arr = [arr];
+    }
+    const treeCall = (arr)=>{
+        let callResult;
+        if(typeof nodeCallback === 'function'){  //判断是否应该提前结束本分支的遍历
+            callResult = nodeCallback.call(nodeThisObj, propArr, arr, parentObjsArr);
+            if(typeof callResult === 'number' || callResult === 'break'){
+                return callResult;
+            }
+        }
+        const isMathEnd = callResult === true;
+        if(
+            isMathEnd ||  //达到指定的条件时
+            deep >0 && propArr.length >= deep ||  // 如果已经达到指定深度
+            ! Array.isArray(arr)    // 如果不是数组
+        ){ 
+            if(typeof leafCallback === 'function'){
+                callResult = leafCallback.call(leafThisObj, propArr, arr, parentObjsArr);
+                return callResult;
+            }else{
+                return;
+            }
+        }
+        if(parentObjsArr.includes(arr)){
+            console.error('存在循环引用: ', ['root', ...propArr].join(' => '));
+            return cicleBreak && 'break';
+        }
+        callResult = null;
+        parentObjsArr.push(arr);
+        for(let i=0; i<arr.length; i++){
+            propArr.push(i);
+            callResult = treeCall(arr[i]);
+            propArr.pop();
+            if(typeof callResult === 'number'){
+                i = callResult;
+            }else if(callResult === 'break'){
+                break;
+            }
+        }
+        parentObjsArr.pop();
+        return callResult;
+    }
+    treeCall(arr);
+    return arr;
+}
 
 
 

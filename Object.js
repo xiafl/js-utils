@@ -3,9 +3,9 @@
 /**
  * 从一个对象上取指定的属性 或 设置属性的值
  * @public
- * @param {Object} obj - 对象
- * @param {Array} propArr - 属性名称的数组
- * @param {any} [val]   -  要设置的值 省略时表示获取，否则就是设置
+ * @param {Object} obj - 对象, 当设置时，会更改这个对象
+ * @param {Array} propArr - 属性名称的数组，指出要操作的属性的路径
+ * @param {any} [val=undefined]   -  要设置的值 省略时表示获取，否则就是设置
  * @param {Boolean} [fource=false]   - 在设置时，如果不存在对应的属性，是否创建
  * @returns {any|undefined} 设置时一定返回undefined, 获取时，返回对应的值，如果不存在则返回undefined
  * @example
@@ -17,8 +17,11 @@
  * 6. props({aa: 3}, ['aa'], 5);  // => undefined  设置了 aa 的值为5
  * 7. props({aa: 3}, [], 5);  // => undefined 什么也没做
  */
-function props(obj, propArr, val, fource = false){
+function props(obj, propArr, val = undefined, fource = false){
     for(let i=0, subObj = obj, len = propArr.length, propName; i<len; i++){
+        if(!subObj || typeof subObj !== 'object'){
+            return;
+        }
         propName = propArr[i];
         if(i === len -1 ){
             if(val === undefined){
@@ -90,24 +93,25 @@ function treeObject(obj, {
         if(typeof nodeCallback === 'function'){  //判断是否应该提前结束本分支的遍历
             callResult = nodeCallback.call(nodeThisObj, propArr, obj, parentObjsArr);
             if(callResult === 'break'){
-                return true;
+                return 'break';
             }
         }
         const isMathEnd = callResult === true;
         if(
-            typeof leafCallback === 'function' && // 有回调才有这一步的必要
-            (
-                isMathEnd ||  //达到指定的条件时
-                deep >0 && propArr.length >= deep ||  // 如果已经达到指定深度
-                ! (obj && typeof obj === 'object')    // 如果不是对象
-            )
+            isMathEnd ||  //达到指定的条件时
+            deep >0 && propArr.length >= deep ||  // 如果已经达到指定深度
+            ! (obj && typeof obj === 'object')    // 如果不是对象
         ){ 
-            callResult = leafCallback.call(leafThisObj, propArr, obj, parentObjsArr);
-            return callResult === 'break';
+            if(typeof leafCallback === 'function'){
+                callResult = leafCallback.call(leafThisObj, propArr, obj, parentObjsArr);
+                return callResult;
+            }else{
+                return;
+            }
         }
         if(parentObjsArr.includes(obj)){
             console.error('存在循环引用: ', ['root', ...propArr].join(' => '));
-            return cicleBreak;
+            return cicleBreak && 'break';
         }
         callResult = null;
         parentObjsArr.push(obj);
@@ -115,7 +119,7 @@ function treeObject(obj, {
             propArr.push(key);
             callResult = treeCall(value);
             propArr.pop();
-            if(callResult === true){
+            if(callResult === 'break'){
                 break;
             }
         }

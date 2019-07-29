@@ -41,6 +41,7 @@ function ajax({
 
         ajax_setHeader(xmlHttp, options);  // 设置请求头
         ajax_setTimeout(xmlHttp, options);  // 设置请求的超时处理
+        // 还需要处理  xmlHttp.onerror 事件
         
         if(async){  //只有异步时，才需要注册接收的事件
             xmlHttp.onreadystatechange = ()=>{
